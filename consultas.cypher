@@ -25,6 +25,18 @@ RETURN count(r) AS visitas;
 // PARTE 1: Exploración y consultas Cypher
 // ------------------------------------------------------------
 
+// Parte 1.1: Visualización e interpretación del grafo
+MATCH (n) 
+OPTIONAL MATCH (n)-[r]->() 
+RETURN n, r;
+
+// Parte 1.2: Casa con más visitas
+MATCH (c:Casa)
+OPTIONAL MATCH ()-[r:PIDIO_DULCES]->(c)
+RETURN c.id AS identificador, c.direccion AS direccion, count(r) AS cantidad_visitas
+ORDER BY cantidad_visitas DESC
+LIMIT 10;
+
 // Parte 1.3: Estudiantes con más dulces
 MATCH (e:Estudiante)-[r:PIDIO_DULCES]->(c:Casa)
 RETURN e.id AS Nombre, count(r) AS Visitas, sum(r.cantidad) AS CantDulces
@@ -45,6 +57,25 @@ RETURN VisitasSinDulce, (toFloat(VisitasSinDulce)/75)*100 AS Porcentaje;
 // ------------------------------------------------------------
 // PARTE 2: Análisis con GDS
 // ------------------------------------------------------------
+
+// Parte 2.1: Proyección del grafo
+CALL gds.graph.project(
+  'halloween',
+  ['Estudiante', 'Casa'],
+  {PIDIO_DULCES: {orientation: 'NATURAL'}}
+)
+YIELD graphName, nodeCount, relationshipCount
+RETURN graphName, nodeCount, relationshipCount;
+
+// Parte 2.2: Degree Centrality
+CALL gds.degree.stream('halloween', {
+  orientation: 'REVERSE'
+})
+YIELD nodeId, score
+WITH gds.util.asNode(nodeId) AS nodo, score
+WHERE 'Casa' IN labels(nodo)
+RETURN labels(nodo) AS etiquetas, nodo.id AS id, nodo.direccion AS direccion, score
+ORDER BY score DESC;
 
 // Parte 2.3: 5 parejas distintas con mayor similitud entre sí
 CALL gds.nodeSimilarity.stream('halloween', {
@@ -77,6 +108,10 @@ RETURN count(c) AS CantidadCasas;
 // ------------------------------------------------------------
 // PARTE 3: Búsqueda de caminos
 // ------------------------------------------------------------
+
+// Parte 3.1: Casas compartidas
+MATCH path = (a:Estudiante {id: 'Antonia'})-[:PIDIO_DULCES]-(c:Casa)-[:PIDIO_DULCES]-(b:Estudiante {id: 'Camila'})
+RETURN path;
 
 // Parte 3.2: Camino más corto entre Antonia y Camila
 MATCH (a:Estudiante {id: 'Antonia'}), (b:Estudiante {id: 'Camila'})
